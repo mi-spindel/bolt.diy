@@ -9,6 +9,16 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import { createScopedLogger } from '~/utils/logger';
 import { createFilesContext, extractPropertiesFromMessage } from './utils';
 import { getFilePaths } from './select-context';
+import { AISDKExporter } from 'langsmith/vercel';
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+
+const sdk = new NodeSDK({
+  traceExporter: new AISDKExporter(),
+  instrumentations: [getNodeAutoInstrumentations()],
+});
+
+sdk.start();
 
 export type Messages = Message[];
 
@@ -141,7 +151,7 @@ ${props.summary}
 
   // console.log(systemPrompt,processedMessages);
 
-  return await _streamText({
+  const resp = await _streamText({
     model: provider.getModelInstance({
       model: modelDetails.name,
       serverEnv,
@@ -152,5 +162,10 @@ ${props.summary}
     maxTokens: dynamicMaxTokens,
     messages: convertToCoreMessages(processedMessages as any),
     ...options,
+    experimental_telemetry: AISDKExporter.getSettings(),
   });
+
+  await sdk.shutdown();
+
+  return resp;
 }
