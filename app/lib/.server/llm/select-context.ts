@@ -6,6 +6,8 @@ import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROVIDER_LIST } from '~/utils/constant
 import { createFilesContext, extractCurrentContext, extractPropertiesFromMessage, simplifyBoltActions } from './utils';
 import { createScopedLogger } from '~/utils/logger';
 import { LLMManager } from '~/lib/modules/llm/manager';
+import { AISDKExporter } from 'langsmith/vercel';
+import { sdk } from '~/instrumentation';
 
 // Common patterns to ignore, similar to .gitignore
 
@@ -118,6 +120,8 @@ export async function selectContext(props: {
     throw new Error('No user message found');
   }
 
+  sdk.start();
+
   // select files from the list of code file from the project that might be useful for the current request from the user
   const resp = await generateText({
     system: `
@@ -174,7 +178,10 @@ export async function selectContext(props: {
       apiKeys,
       providerSettings,
     }),
+    experimental_telemetry: AISDKExporter.getSettings(),
   });
+
+  await sdk.shutdown();
 
   const response = resp.text;
   const updateContextBuffer = response.match(/<updateContextBuffer>([\s\S]*?)<\/updateContextBuffer>/);

@@ -10,15 +10,7 @@ import { createScopedLogger } from '~/utils/logger';
 import { createFilesContext, extractPropertiesFromMessage } from './utils';
 import { getFilePaths } from './select-context';
 import { AISDKExporter } from 'langsmith/vercel';
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-
-const sdk = new NodeSDK({
-  traceExporter: new AISDKExporter(),
-  instrumentations: [getNodeAutoInstrumentations()],
-});
-
-sdk.start();
+import { sdk } from '~/instrumentation';
 
 export type Messages = Message[];
 
@@ -150,6 +142,8 @@ ${props.summary}
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);
 
   // console.log(systemPrompt,processedMessages);
+
+  sdk.start();
 
   const resp = await _streamText({
     model: provider.getModelInstance({

@@ -4,6 +4,8 @@ import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROVIDER_LIST } from '~/utils/constant
 import { extractCurrentContext, extractPropertiesFromMessage, simplifyBoltActions } from './utils';
 import { createScopedLogger } from '~/utils/logger';
 import { LLMManager } from '~/lib/modules/llm/manager';
+import { AISDKExporter } from 'langsmith/vercel';
+import { sdk } from '~/instrumentation';
 
 const logger = createScopedLogger('create-summary');
 
@@ -99,6 +101,8 @@ ${summary.summary}`;
       ? (message.content.find((item) => item.type === 'text')?.text as string) || ''
       : message.content;
 
+  sdk.start();
+
   // select files from the list of code file from the project that might be useful for the current request from the user
   const resp = await generateText({
     system: `
@@ -185,7 +189,10 @@ Please provide a summary of the chat till now including the hitorical summary of
       apiKeys,
       providerSettings,
     }),
+    experimental_telemetry: AISDKExporter.getSettings(),
   });
+
+  await sdk.shutdown();
 
   const response = resp.text;
 

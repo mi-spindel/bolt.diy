@@ -8,6 +8,8 @@ import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
 import { createScopedLogger } from '~/utils/logger';
+import { AISDKExporter } from 'langsmith/vercel';
+import { sdk } from '~/instrumentation';
 
 export async function action(args: ActionFunctionArgs) {
   return llmCallAction(args);
@@ -111,6 +113,8 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
 
       logger.info(`Generating response Provider: ${provider.name}, Model: ${modelDetails.name}`);
 
+      sdk.start();
+
       const result = await generateText({
         system,
         messages: [
@@ -127,8 +131,11 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
         }),
         maxTokens: dynamicMaxTokens,
         toolChoice: 'none',
+        experimental_telemetry: AISDKExporter.getSettings(),
       });
       logger.info(`Generated response`);
+
+      await sdk.shutdown();
 
       return new Response(JSON.stringify(result), {
         status: 200,
